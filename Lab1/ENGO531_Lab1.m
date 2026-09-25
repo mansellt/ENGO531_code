@@ -21,7 +21,7 @@ n_con = size(vr_con1, 1); %XYZ for each control
 %figure;
 %scatter(1:n_con, vr_con(:,1), "filled", "o" )
 
-%Cx matrix
+%        Cx matrix Structure
 %4 images with 6 EOPS each: 24
 %8 Tiepoints with XYZ = 24
 %4 Control with XYZ = 12
@@ -68,6 +68,7 @@ for i = 1:n_points
 
 end
 
+%{
 %% Plot the Camera perspective
 plot3(eop1.XYZc(:,1), eop1.XYZc(:,2), eop1.XYZc(:,3), 'o', 'MarkerSize', 8, 'LineWidth', 1.5);
 for i = 1:size(eop1.XYZc,1)
@@ -75,6 +76,9 @@ for i = 1:size(eop1.XYZc,1)
          'VerticalAlignment','bottom', 'HorizontalAlignment','left');
 end
 %% 
+%}
+
+
 xlabel('X mm');
 ylabel('Y mm');
 zlabel('Z mm');
