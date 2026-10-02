@@ -10,7 +10,6 @@ clc;
 % Improved measurement simulation: sd_xy = 0.03 px
 [eop2,iop2,con2,tie2,Cx2,vr_img2,vr_eop2,vr_dis2,vr_con2] = full_matlab_bundle('engo531_lab1_2');
 
-
 % improved sd_xy = 0.03 pix
 n_img_xy = size(vr_img1, 1); %number of image measurements
 n_con = size(vr_con1, 1); %XYZ for each control
@@ -55,6 +54,8 @@ tie_ctr_std_list = table( ...
 
 for i = 1:n_points
 
+    %118.555234944390 %From simulated adjustment used to scale covariance
+
     idx = 3*i-2:3*i; % get the 3x3 covariance matrix for a point
     Ci = Cx_tie_ctr(idx,idx);
     XYZi = XYZ_tie_ctr(i,:); %point coordinates [tie; ctr]
@@ -75,7 +76,6 @@ for i = 1:size(eop1.XYZc,1)
     text(eop1.XYZc(i,1), eop1.XYZc(i,2), eop1.XYZc(i,3), string(eop1.img(i)), ...
          'VerticalAlignment','bottom', 'HorizontalAlignment','left');
 end
-%% 
 %}
 
 
