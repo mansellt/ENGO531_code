@@ -81,7 +81,7 @@ fprintf('A-posteriori standard deviation = %.4f\n',sigma0)
 Cx_scaled = sigma0_sq * Cx;
 
 
-%% Question 8: Object point precision
+%% Question 10: Object point precision
 
 n_eop_params = 6*n_img;
 n_tie_params = 3*n_tie;

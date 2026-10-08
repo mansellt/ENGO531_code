@@ -194,6 +194,7 @@ end
 
 %% Plot camera positions
 
+%{
 plot3(eop.XYZc(:,1), ...
       eop.XYZc(:,2), ...
       eop.XYZc(:,3), ...
@@ -212,7 +213,7 @@ for i = 1:size(eop.XYZc,1)
          'HorizontalAlignment','left');
 
 end
-
+%}
 
 xlabel('X (m)')
 ylabel('Y (m)')
