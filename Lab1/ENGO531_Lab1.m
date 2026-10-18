@@ -402,3 +402,46 @@ xlabel('Control Point');
 ylabel('3D Coordinate Change (mm)');
 title('Magnitude of Control Point Coordinate Changes');
 grid on;
+
+%% 10. Standardized residuals and outlier detection
+
+% A priori image-coordinate standard deviation (pixels)
+sigma_xy = sd_xy;
+
+% Residuals and redundancy numbers
+v_img = vr_img(:,1);
+r_img = vr_img(:,2);
+
+% Calculate standardized residuals
+w_img = v_img ./ (sigma_xy .* sqrt(r_img));
+
+% Separate x and y standardized residuals
+w_xy = reshape(w_img,2,[])';
+
+% Critical value (95% two-sided test)
+crit = 1.96;
+
+% Create outlier table
+outlierTable = table( ...
+    obs(:,1), obs(:,2), ...
+    w_xy(:,1), w_xy(:,2), ...
+    'VariableNames', ...
+    {'PointID','ImageID','wx','wy'});
+
+% Identify outliers
+outlierTable.OutlierX = abs(outlierTable.wx) > crit;
+outlierTable.OutlierY = abs(outlierTable.wy) > crit;
+
+% Keep observations flagged in either coordinate
+outliers = outlierTable( ...
+    outlierTable.OutlierX | outlierTable.OutlierY, :);
+
+% Sort by largest standardized residual
+outliers.MaxAbsW = max(abs(outliers.wx),abs(outliers.wy));
+outliers = sortrows(outliers,'MaxAbsW','descend');
+
+disp('Potential image-coordinate outliers:')
+disp(outliers)
+
+fprintf('Number of flagged image points: %d\n', ...
+    height(outliers));

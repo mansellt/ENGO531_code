@@ -8,13 +8,13 @@ clear; clc;
 imageWidthPx = 5712;
 imageHeightPx = 4284;
 c0_px = 4109.10;
-sd_xy = 2.5;                 % assumed image coordinate SD (pixels)
+sd_xy = 3.28;                 % assumed image coordinate SD (pixels)
 sd_XYZ = 1.0;                % assumed control-coordinate SD (mm)
 useIDs = (1:8)';
 
 % Enter exactly THREE well-distributed target IDs, e.g. [ID1 ID2 ID3].
 % Leave empty to be prompted when the script runs.
-controlIDs = [1117 1134 2016];
+controlIDs = [1123 2031 2012];
 
 % Set true to use previously adjusted EOPs when you have a saved
 % preliminary '*_results.mat' file containing eop (recommended).
@@ -50,6 +50,74 @@ assert(all(obs(:,3)>=1 & obs(:,3)<=imageWidthPx & ...
     'Image coordinates exceed the specified image dimensions');
 
 obs = obs(ismember(obs(:,2),useIDs),:);
+
+
+%% Identify targets needing additional image measurements
+
+% Read the original image observations
+obs_all = readmatrix(phoSource, 'FileType', 'text');
+
+% Only consider the 8 calibration images
+obs_all = obs_all(ismember(obs_all(:,2),useIDs),:);
+
+% Keep only targets with supplied XYZ coordinates
+obs_all = obs_all(ismember(obs_all(:,1),xyz(:,1)),:);
+
+% Count the number of images observing each target
+[pointIDs,~,idx] = unique(obs_all(:,1));
+nImages = accumarray(idx,1);
+
+% Select targets observed in fewer than 4 images
+targetIDs = pointIDs(nImages >= 2 & nImages < 4);
+
+% Create a table of missing observations
+missingPoint = [];
+missingImage = [];
+currentCount = [];
+
+for i = 1:numel(targetIDs)
+
+    pointID = targetIDs(i);
+
+    % Images where target is already measured
+    measuredImages = obs_all(obs_all(:,1)==pointID,2);
+
+    % Images without measurements
+    missingImages = setdiff(useIDs,measuredImages);
+
+    for j = 1:numel(missingImages)
+
+        missingPoint(end+1,1) = pointID;
+        missingImage(end+1,1) = missingImages(j);
+        currentCount(end+1,1) = numel(measuredImages);
+
+    end
+end
+
+missingTable = table(missingPoint,missingImage,currentCount, ...
+    'VariableNames',{'PointID','ImageToCheck','CurrentImageCount'});
+
+missingTable = sortrows(missingTable, ...
+    {'CurrentImageCount','PointID','ImageToCheck'});
+
+disp(missingTable);
+
+% Save results
+writetable(missingTable,'Targets_To_Check.csv');
+
+%% Temporary outlier exclusion
+
+excludeObs = [
+    1133 8;
+    2010 6;
+    2016 6;
+];
+
+idxRemove = ismember(obs(:,1:2),excludeObs,'rows');
+
+obs(idxRemove,:) = [];
+
+
 [known,~] = ismember(obs(:,1),xyz(:,1));
 if any(~known)
     fprintf('Excluding %d observations of targets without supplied XYZ: ',sum(~known));
@@ -253,3 +321,151 @@ sigma0 = sqrt(sigma0_sq);
 fprintf('Degrees of freedom: %d\n',dof);
 fprintf('A posteriori variance factor: %.4f\n',sigma0_sq);
 fprintf('A posteriori SD of unit weight: %.4f\n',sigma0);
+
+%% 10. Standardized residuals and outlier detection
+
+% A priori image-coordinate standard deviation (pixels)
+sigma_xy = sd_xy;
+
+% Residuals and redundancy numbers
+v_img = vr_img(:,1);
+r_img = vr_img(:,2);
+
+% Calculate standardized residuals
+w_img = v_img ./ (sigma_xy .* sqrt(r_img));
+
+% Separate x and y standardized residuals
+w_xy = reshape(w_img,2,[])';
+
+% Critical value (95% two-sided test)
+crit = 1.96;
+
+% Create outlier table
+outlierTable = table( ...
+    obs(:,1), obs(:,2), ...
+    w_xy(:,1), w_xy(:,2), ...
+    'VariableNames', ...
+    {'PointID','ImageID','wx','wy'});
+
+% Identify outliers
+outlierTable.OutlierX = abs(outlierTable.wx) > crit;
+outlierTable.OutlierY = abs(outlierTable.wy) > crit;
+
+% Keep observations flagged in either coordinate
+outliers = outlierTable( ...
+    outlierTable.OutlierX | outlierTable.OutlierY, :);
+
+% Sort by largest standardized residual
+outliers.MaxAbsW = max(abs(outliers.wx),abs(outliers.wy));
+outliers = sortrows(outliers,'MaxAbsW','descend');
+
+disp('Potential image-coordinate outliers:')
+disp(outliers)
+
+fprintf('Number of flagged image points: %d\n', ...
+    height(outliers));
+
+%% Analyze image overlap for each target
+
+[pointIDs,~,idx] = unique(obs(:,1));
+
+nImages = accumarray(idx,1);
+
+overlapTable = table(pointIDs,nImages, ...
+    'VariableNames',{'PointID','NumberOfImages'});
+
+disp('Number of targets by image overlap:')
+
+overlapSummary = groupsummary(overlapTable,'NumberOfImages');
+
+disp(overlapSummary)
+
+figure;
+histogram(nImages, ...
+    'BinMethod','integers');
+
+xlabel('Number of images observing each target');
+ylabel('Number of targets');
+title('Image overlap distribution');
+grid on;
+
+
+%% 11. Plot EOP confidence ellipsoids
+
+% Settings
+S = 5;             % Ellipsoid scale factor
+n = 20;            % Number of ellipsoid surface divisions
+confidence = sqrt(7.8147); % 95% confidence, 3D (chi-square, 3 DOF)
+
+figure;
+hold on;
+grid on;
+axis equal;
+view(3);
+
+for i = 1:eop.num_eop
+
+    % Adjusted camera coordinates
+    XYZ = eop.XYZc(i,:);
+
+    % Covariance matrix for camera position (X,Y,Z)
+    idx = (i-1)*6 + (1:3);
+    Ci = Cx(idx,idx);
+
+    % Plot the 95% confidence ellipsoid
+    calc_plot_ellipsoid(Ci,XYZ,confidence*S,n);
+
+    % Plot camera centre
+    plot3(XYZ(1),XYZ(2),XYZ(3),'k.', ...
+        'MarkerSize',18);
+
+    % Label image
+    text(XYZ(1),XYZ(2),XYZ(3), ...
+        sprintf('  Image %s',string(eop.img(i))), ...
+        'FontSize',10);
+
+end
+
+xlabel('X (mm)');
+ylabel('Y (mm)');
+zlabel('Z (mm)');
+title('Adjusted EOPs with 95% Confidence Ellipsoids');
+
+colorbar;
+hold off;
+
+
+%% 14. Image-point residual vectors
+
+imageID = 1;
+
+idx = obs(:,2) == imageID;
+
+xy = obs(idx,3:4);
+vxy = reshape(vr_img(:,1),2,[])';
+v = vxy(idx,:);
+
+% Visual exaggeration of residual vectors
+scale = 20;
+
+figure;
+hold on;
+grid on;
+axis equal;
+
+quiver(xy(:,1),xy(:,2), ...
+       scale*v(:,1),scale*v(:,2), ...
+       0,'r','LineWidth',1.3);
+
+plot(xy(:,1),xy(:,2),'k.','MarkerSize',10);
+
+set(gca,'YDir','reverse');
+
+xlim([0 imageWidthPx]);
+ylim([0 imageHeightPx]);
+
+xlabel('x (pixels)');
+ylabel('y (pixels)');
+title(sprintf('Image %d: Residual Vectors (20x Exaggerated)',imageID));
+
+hold off;
