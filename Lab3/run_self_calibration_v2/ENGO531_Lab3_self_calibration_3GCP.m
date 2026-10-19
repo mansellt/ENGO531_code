@@ -1,7 +1,7 @@
-%% ENGO 531 Lab 3: nearly minimally constrained self-calibration
+%% ENGO 531 Lab 3: minimally constrained self-calibration
 % Three weighted GCPs; remaining known-XYZ targets are tie points.
 % Camera IOPs (xp, yp, c) estimated using full_matlab_bundle.p.
-% This script does not overwrite your preliminary adjustment files.
+% This script does not overwrite preliminary adjustment files.
 clear; clc;
 close all;
 
@@ -18,7 +18,7 @@ useIDs = (1:8)';
 controlIDs = [1123 2031 2012];
 
 % Set true to use previously adjusted EOPs when you have a saved
-% preliminary '*_results.mat' file containing eop (recommended).
+% preliminary '*_results.mat' file containing eop
 useAdjustedEOPs = true;
 
 %% 2. Choose inputs
@@ -496,3 +496,29 @@ for imageID = useIDs'
 end
 
 sgtitle(sprintf('Image Coordinate Residual Vectors (%dx Exaggerated)',scale));
+
+%% Correlation between IOPs and EOPs
+
+% Full parameter correlation matrix
+sigma = sqrt(diag(Cx));
+R = Cx ./ (sigma*sigma');
+
+% First 48 parameters are EOPs
+% Parameters 49:51 are IOPs
+R_IOP_EOP = R(49:51,1:48);
+
+% Maximum absolute correlation for each IOP
+[maxCorr,idx] = max(abs(R_IOP_EOP),[],2);
+
+eopNames = {'Xc','Yc','Zc','omega','phi','kappa'};
+iopNames = {'xp','yp','c'};
+
+for i = 1:3
+
+    imageID = ceil(idx(i)/6);
+    paramID = mod(idx(i)-1,6)+1;
+
+    fprintf('%s: Image %d, %s, correlation = %.4f\n', ...
+        iopNames{i},imageID,eopNames{paramID}, ...
+        R_IOP_EOP(i,idx(i)));
+end
