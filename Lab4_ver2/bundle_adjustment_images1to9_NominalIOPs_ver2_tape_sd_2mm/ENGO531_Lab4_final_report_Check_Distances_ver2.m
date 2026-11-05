@@ -276,6 +276,51 @@ if hasCov
  text(XYZ(:,1),XYZ(:,2),cellstr(labels),'FontSize',8);
  xlabel('X (mm)');ylabel('Y (mm)');title('95% point XY confidence ellipses (10x display)');
  saveas(f,fullfile(output,'Point_XY_ellipses.png'));
+ %% 3D Object Point Confidence Ellipsoids
+
+f = figure('Name','95% Object Point XYZ Ellipsoids');
+
+hold on;
+grid on;
+axis equal;
+view(3);
+
+% Settings
+confidenceScale = sqrt(7.8147);   % 95% confidence, 3 dimensions
+magnification = 5;                % Change this to adjust display size
+nFaces = 20;
+
+for k = 1:nP
+
+    % Covariance indices for object point k
+    ix = 6*nC + (k-1)*3 + (1:3);
+
+    Cpoint = C(ix,ix);
+
+    % Plot using Professor Lichti's function
+    calc_plot_ellipsoid( ...
+        Cpoint, XYZ(k,:), confidenceScale*magnification, nFaces);
+
+end
+
+% Plot object point positions
+scatter3(XYZ(:,1), XYZ(:,2), XYZ(:,3), ...
+         20, 'k', 'filled');
+
+% Add point labels
+text(XYZ(:,1), XYZ(:,2), XYZ(:,3), ...
+     cellstr(labels), 'FontSize', 8);
+
+xlabel('X (mm)');
+ylabel('Y (mm)');
+zlabel('Z (mm)');
+
+title(sprintf('95%% Object Point Confidence Ellipsoids (%dx)', ...
+      magnification));
+
+colorbar;
+
+saveas(f,fullfile(output,'Object_XYZ_ellipsoids.png'));
  f=figure('Name','95% camera XYZ ellipsoids');hold on;grid on;axis equal;view(3);
  for k=1:nC
     ix=(k-1)*6+(1:3);
