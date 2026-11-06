@@ -256,11 +256,11 @@ f=figure('Name','Image residuals');tiledlayout(3,ceil(numel(ims)/3));
 for k=1:numel(ims)
  nexttile;mask=PHO(:,2)==ims(k);hold on;grid on;
  scatter(PHO(mask,3),PHO(mask,4),10,'k','filled');
- quiver(PHO(mask,3),PHO(mask,4),30*V(mask,1),30*V(mask,2),0,'r');
+ quiver(PHO(mask,3),PHO(mask,4),100*V(mask,1),100*V(mask,2),0,'r');
  title(sprintf('Image %d',ims(k)));set(gca,'YDir','reverse');axis equal;
  xlim([0 5712]);ylim([0 4284]);
 end
-sgtitle('Final image residuals (30x vectors)');saveas(f,fullfile(output,'Residual_vectors.png'));
+sgtitle('Final image residuals (100x vectors)');saveas(f,fullfile(output,'Residual_vectors.png'));
 f=figure('Name','Standardized residuals');plot(w,'.');hold on;grid on;
 yline(3,'r--');yline(-3,'r--');xlabel('Scalar observation index');ylabel('w');
 title('Final standardized image residuals');saveas(f,fullfile(output,'Standardized_residuals.png'));
