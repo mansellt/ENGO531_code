@@ -1,0 +1,17 @@
+ENGO 531 Lab 5 face-aware TLS colourization
+Bundle: /Users/trevormm/Desktop/ENGO531/ENGO531_code/Lab5/bundle_adjustment_overConstrained/lab5_TLS_mode0_bundle/lab5_TLS_results.mat
+Point cloud: /Users/trevormm/Desktop/ENGO531/ENGO531_code/Lab5/bundle_adjustment_overConstrained/Backprojection/uncoloured_StudyBox.txt
+Target CSV: /Users/trevormm/Desktop/ENGO531/ENGO531_code/Lab5/bundle_adjustment_overConstrained/target_coordinates.csv
+Reprojection radial RMS 1.8972 px
+Plane fit RMS (L F R) mm: 0.0000 8.0428 1.9857
+Face tolerance 130.0 mm; Zbuffer size 4 px; depth tolerance 35.0 mm
+Input points 358411; saved points 356249; excluded points 2162
+Image 1: 36056 assigned points; /Users/trevormm/Desktop/ENGO531/ENGO531_code/Lab4/photos_jpeg/Image1.jpg
+Image 2: 104575 assigned points; /Users/trevormm/Desktop/ENGO531/ENGO531_code/Lab4/photos_jpeg/Image2.jpg
+Image 3: 3284 assigned points; /Users/trevormm/Desktop/ENGO531/ENGO531_code/Lab4/photos_jpeg/Image3.jpg
+Image 4: 52754 assigned points; /Users/trevormm/Desktop/ENGO531/ENGO531_code/Lab4/photos_jpeg/Image4.jpg
+Image 5: 16751 assigned points; /Users/trevormm/Desktop/ENGO531/ENGO531_code/Lab4/photos_jpeg/Image5.jpg
+Image 6: 9774 assigned points; /Users/trevormm/Desktop/ENGO531/ENGO531_code/Lab4/photos_jpeg/Image6.jpg
+Image 7: 88219 assigned points; /Users/trevormm/Desktop/ENGO531/ENGO531_code/Lab4/photos_jpeg/Image7.jpg
+Image 8: 16697 assigned points; /Users/trevormm/Desktop/ENGO531/ENGO531_code/Lab4/photos_jpeg/Image8.jpg
+Image 9: 28139 assigned points; /Users/trevormm/Desktop/ENGO531/ENGO531_code/Lab4/photos_jpeg/Image9.jpg

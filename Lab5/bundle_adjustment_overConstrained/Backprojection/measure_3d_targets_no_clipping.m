@@ -1,4 +1,4 @@
-function measure_3d_targets_fixed_zoom()
+  function measure_3d_targets_no_clipping()
 % MEASURE_3D_TARGETS  Pick labelled 3-D points from an XYZ point cloud.
 %
 % Input: TXT/CSV containing XYZ or XYZ RGB Intensity Nx Ny Nz.
@@ -9,7 +9,8 @@ function measure_3d_targets_fixed_zoom()
 % Requires a desktop MATLAB session with interactive figures.
 % No Computer Vision or Lidar Toolbox required.
 %
-% Workflow: rotate; use mouse wheel or ZOOM +/- to magnify; then Add/Edit.
+% Workflow: rotate, zoom with wheel/ZOOM +/-, and pan via arrow buttons.
+% Do not use MATLAB toolbar zoom or pan; those change camera state.
 % Do not enable MATLAB's built-in zoom tool; it may reintroduce clipping.
 % When picking, click on a cloud point to create a MATLAB data tip,
 % then click ACCEPT SELECTED POINT in the figure. The coordinates are
@@ -106,6 +107,10 @@ function measure_3d_targets_fixed_zoom()
     hCloud = scatter3(ax,XYZ(:,1),XYZ(:,2),XYZ(:,3), ...
                       3,cloudColors,'.');
     hCloud.PickableParts = 'visible';
+    % Disable axes-boundary clipping, including on the point cloud itself.
+    % Otherwise a close-up or translated view may show a sharp cut-off.
+    ax.Clipping = 'off';
+    hCloud.Clipping = 'off';
     hold(ax,'on');
     axis(ax,'equal'); axis(ax,'vis3d');
     grid(ax,'on'); xlabel(ax,'X'); ylabel(ax,'Y'); zlabel(ax,'Z');
@@ -120,11 +125,18 @@ function measure_3d_targets_fixed_zoom()
     xyzMax = max(XYZ,[],1);
     cloudCentre = (xyzMin + xyzMax)/2;
     cloudRadius = max(norm(xyzMax-xyzMin)/2,1e-6);
+    % Maintain fixed, generously padded data limits while navigating.
+    % Turning clipping OFF is the critical part; the limits are for scale.
+    margin = max(xyzMax-xyzMin,cloudRadius*0.05)*0.5;
+    xlim(ax,[xyzMin(1)-margin(1),xyzMax(1)+margin(1)]);
+    ylim(ax,[xyzMin(2)-margin(2),xyzMax(2)+margin(2)]);
+    zlim(ax,[xyzMin(3)-margin(3),xyzMax(3)+margin(3)]);
+    set(ax,'XLimMode','manual','YLimMode','manual','ZLimMode','manual');
     viewingDirection = ax.CameraPosition - ax.CameraTarget;
     viewingDirection = viewingDirection/norm(viewingDirection);
     ax.CameraTarget = cloudCentre;
-    ax.CameraPosition = cloudCentre + viewingDirection*(8*cloudRadius);
-    initialViewAngle = 2*atan2d(1.45*cloudRadius,8*cloudRadius);
+    ax.CameraPosition = cloudCentre + viewingDirection*(25*cloudRadius);
+    initialViewAngle = 2*atan2d(1.45*cloudRadius,25*cloudRadius);
     ax.CameraViewAngle = initialViewAngle;
     ax.CameraViewAngleMode = 'manual';
     ax.CameraPositionMode = 'manual';
@@ -139,10 +151,27 @@ function measure_3d_targets_fixed_zoom()
     uicontrol(fig,'Style','pushbutton','String','ZOOM -', ...
         'Units','normalized','Position',[0.21 0.018 0.12 0.05], ...
         'Callback',@(~,~) changeZoom(1));
+    % Pan/translate by moving the camera and target together; this keeps
+    % the camera far outside the cloud (unlike built-in camera translation).
+    uicontrol(fig,'Style','pushbutton','String','LEFT', ...
+        'Units','normalized','Position',[0.49 0.018 0.08 0.05], ...
+        'Callback',@(~,~) panView(-1,0));
+    uicontrol(fig,'Style','pushbutton','String','RIGHT', ...
+        'Units','normalized','Position',[0.58 0.018 0.08 0.05], ...
+        'Callback',@(~,~) panView(1,0));
+    uicontrol(fig,'Style','pushbutton','String','UP', ...
+        'Units','normalized','Position',[0.67 0.018 0.07 0.05], ...
+        'Callback',@(~,~) panView(0,1));
+    uicontrol(fig,'Style','pushbutton','String','DOWN', ...
+        'Units','normalized','Position',[0.75 0.018 0.08 0.05], ...
+        'Callback',@(~,~) panView(0,-1));
     uicontrol(fig,'Style','pushbutton','String','RESET VIEW', ...
-        'Units','normalized','Position',[0.34 0.018 0.13 0.05], ...
+        'Units','normalized','Position',[0.84 0.018 0.13 0.05], ...
         'Callback',@(~,~) resetZoom());
     refreshLabels();
+    % MATLAB may reenable clipping after certain graphics interactions.
+    ax.Clipping = 'off';
+    hCloud.Clipping = 'off';
 
     while isgraphics(fig)
         choice = menu(sprintf('%d targets recorded | Use Rotate/zoom view before selecting',height(T)), ...
@@ -217,68 +246,57 @@ function measure_3d_targets_fixed_zoom()
         drawnow limitrate;
     end
 
+    function panView(horizontal,vertical)
+        if ~isgraphics(ax), return; end
+        forward = ax.CameraTarget - ax.CameraPosition;
+        forward = forward/norm(forward);
+        up = ax.CameraUpVector;
+        up = up/norm(up);
+        right = cross(forward,up);
+        right = right/norm(right);
+        up = cross(right,forward);
+        % Shift 15 percent of the currently visible half-height.
+        visibleHalfHeight = norm(ax.CameraPosition-ax.CameraTarget) * ...
+                            tand(ax.CameraViewAngle/2);
+        delta = 0.3*visibleHalfHeight * ...
+                (-horizontal*right - vertical*up);
+        ax.CameraTarget = ax.CameraTarget + delta;
+        ax.CameraPosition = ax.CameraPosition + delta;
+        drawnow limitrate;
+    end
+
     function resetZoom()
         if ~isgraphics(ax), return; end
         ax.CameraViewAngle = initialViewAngle;
         ax.CameraTarget = cloudCentre;
-        ax.CameraPosition = cloudCentre + viewingDirection*(8*cloudRadius);
+        ax.CameraPosition = cloudCentre + viewingDirection*(25*cloudRadius);
         drawnow;
     end
 
     function pointIndex = pickCloudPoint(id)
-        pointIndex=[];
+        % A data-tip callback retains the exact selected source point.
+        % This avoids relying on getCursorInfo when ACCEPT is pressed.
+        pointIndex = [];
         if ~isgraphics(fig), return; end
-        % Disable rotation before enabling point data tips.
         rotate3d(fig,'off');
         dcm = datacursormode(fig);
+        set(dcm,'Enable','off');
         removeAllDataTips(dcm);
-        set(dcm,'Enable','on','DisplayStyle','datatip', ...
-                'SnapToDataVertex','on');
-        title(ax,sprintf('CLICK a cloud point for target %s, then ACCEPT SELECTED POINT',id), ...
+        selectedIndex = [];
+        set(dcm,'UpdateFcn',@onDataTip, ...
+                'DisplayStyle','datatip','SnapToDataVertex','on', ...
+                'Enable','on');
+        title(ax,sprintf('CLICK one cloud point for %s, then ACCEPT SELECTED POINT',id), ...
               'Interpreter','none');
         accept = uicontrol(fig,'Style','pushbutton', ...
             'String','ACCEPT SELECTED POINT', ...
             'Units','normalized','Position',[0.70 0.018 0.27 0.055], ...
             'FontSize',11,'BackgroundColor',[0.86 0.95 0.85], ...
-            'Callback',@(~,~) uiresume(fig));
+            'Callback',@(~,~) acceptPick());
         cancel = uicontrol(fig,'Style','pushbutton','String','CANCEL', ...
             'Units','normalized','Position',[0.51 0.018 0.17 0.055], ...
             'Callback',@(~,~) cancelPick());
-        wasCancelled=false;
-        while isgraphics(fig)
-            uiwait(fig);
-            if ~isgraphics(fig) || wasCancelled, break; end
-            info = getCursorInfo(dcm);
-            if isempty(info)
-                warndlg('Click directly on one of the point-cloud dots first.');
-                continue;
-            end
-            % Only trust a data tip belonging to the original point cloud.
-            k = find(arrayfun(@(s) isequal(s.Target,hCloud),info),1,'end');
-            if isempty(k)
-                warndlg('Select a point on the original cloud, not a target label.');
-                continue;
-            end
-            selected = info(k);
-            if isfield(selected,'DataIndex') && ...
-                    isnumeric(selected.DataIndex) && ...
-                    isscalar(selected.DataIndex) && ...
-                    selected.DataIndex>=1 && selected.DataIndex<=size(XYZ,1)
-                pointIndex = selected.DataIndex;
-            else
-                % Compatibility fallback for MATLAB versions without DataIndex.
-                pos = selected.Position;
-                [~,pointIndex] = min(sum((XYZ-pos).^2,2));
-            end
-            p=XYZ(pointIndex,:);
-            confirm = questdlg(sprintf(['Target: %s\n' ...
-                'X = %.9f\nY = %.9f\nZ = %.9f\nCloud point = %d\n\nRecord these coordinates?'], ...
-                id,p(1),p(2),p(3),originalIndices(pointIndex)), ...
-                'Confirm 3D coordinates','Record','Pick again','Cancel','Record');
-            if strcmp(confirm,'Record'), break; end
-            pointIndex=[];
-            if ~strcmp(confirm,'Pick again'), break; end
-        end
+        uiwait(fig);
         if isgraphics(accept), delete(accept); end
         if isgraphics(cancel), delete(cancel); end
         if isgraphics(fig)
@@ -287,8 +305,77 @@ function measure_3d_targets_fixed_zoom()
             rotate3d(fig,'on');
             refreshLabels();
         end
+
+        function output = onDataTip(~,eventObj)
+            pos = get(eventObj,'Position');
+            try
+                dataIdx = get(eventObj,'DataIndex');
+            catch
+                dataIdx = [];
+            end
+            if isempty(dataIdx) || ~isscalar(dataIdx) || ...
+                    dataIdx<1 || dataIdx>size(XYZ,1)
+                % Fall back to matching the snapped XYZ coordinate.
+                [~,dataIdx] = min(sum((XYZ-pos).^2,2));
+            end
+            selectedIndex = dataIdx;
+            q = XYZ(dataIdx,:);
+            output = {sprintf('Target: %s',char(id)), ...
+                      sprintf('Cloud index: %d',originalIndices(dataIdx)), ...
+                      sprintf('X: %.9f',q(1)), ...
+                      sprintf('Y: %.9f',q(2)), ...
+                      sprintf('Z: %.9f',q(3))};
+            fprintf('Selected cloud point %d for target %s\n', ...
+                    originalIndices(dataIdx),char(id));
+        end
+
+        function acceptPick()
+            if isempty(selectedIndex)
+                % Some MATLAB releases update data tips differently.
+                % Try the active data tip before asking for another click.
+                try
+                    tips = getCursorInfo(dcm);
+                    if ~isempty(tips)
+                        matching = find(arrayfun(@(x) isequal(x.Target,hCloud),tips),1,'end');
+                        if ~isempty(matching)
+                            selectedInfo = tips(matching);
+                            if isfield(selectedInfo,'DataIndex') && ...
+                                    ~isempty(selectedInfo.DataIndex)
+                                selectedIndex = selectedInfo.DataIndex;
+                            else
+                                pos = selectedInfo.Position;
+                                [~,selectedIndex] = min(sum((XYZ-pos).^2,2));
+                            end
+                        end
+                    end
+                catch
+                end
+            end
+            if isempty(selectedIndex)
+                warndlg(['No point selected yet. Click directly on a dot ' ...
+                         'in the cloud until an XYZ data tip appears, then press ACCEPT.'], ...
+                         'Select a cloud point');
+                return;
+            end
+            q = XYZ(selectedIndex,:);
+            answer = questdlg(sprintf(['Target: %s\n' ...
+                  'X = %.9f\nY = %.9f\nZ = %.9f\nCloud point = %d\n\nRecord these coordinates?'], ...
+                   char(id),q(1),q(2),q(3),originalIndices(selectedIndex)), ...
+                   'Confirm 3D coordinates','Record','Pick again','Cancel','Record');
+            if strcmp(answer,'Record')
+                pointIndex = selectedIndex;
+                uiresume(fig);
+            elseif strcmp(answer,'Cancel')
+                pointIndex = [];
+                uiresume(fig);
+            else
+                selectedIndex = [];
+                removeAllDataTips(dcm);
+            end
+        end
+
         function cancelPick()
-            wasCancelled=true;
+            pointIndex = [];
             if isgraphics(fig), uiresume(fig); end
         end
     end
@@ -305,6 +392,8 @@ function measure_3d_targets_fixed_zoom()
                  'Interpreter','none','Tag','recordedLabel');
         end
         title(ax,sprintf('%d cloud points | %d recorded targets',size(XYZ,1),height(T)));
+        ax.Clipping = 'off';
+        hCloud.Clipping = 'off';
     end
 
     function saveCSV()

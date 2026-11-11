@@ -1,0 +1,23 @@
+ENGO 531 Lab 5 - Backprojection / nearest neighbour RGB
+Input MAT: /Users/trevormm/Desktop/ENGO531/ENGO531_code/Lab5/bundle_adjustment_overConstrained/lab5_TLS_mode0_bundle/lab5_TLS_results.mat
+Input cloud: /Users/trevormm/Desktop/ENGO531/ENGO531_code/Lab5/bundle_adjustment_overConstrained/Backprojection/uncoloured_StudyBox.txt
+Output cloud: /Users/trevormm/Desktop/ENGO531/ENGO531_code/Lab5/bundle_adjustment_overConstrained/Backprojection/lab5_TLS_colourized_XYZRGB.txt
+IOP xp yp c (px): 2834.0000000 2156.7000000 3995.9000000
+Projection rotation: (Rx*Ry*Rz) transpose; x=xp-c*U/W; y=yp+c*V/W
+Pixel interpolation: nearest neighbor
+Selection: projection closest to normalized image centre
+No occlusion test; points inside image bounds can still be hidden
+Reprojection check radial RMS 1.8972 px
+Original cloud units: metres
+Total numeric input points: 358411
+Coloured points: 358411
+Excluded points: 0
+Image 1 assigned points 122335: /Users/trevormm/Desktop/ENGO531/ENGO531_code/Lab4/photos_jpeg/Image1.jpg
+Image 2 assigned points 24752: /Users/trevormm/Desktop/ENGO531/ENGO531_code/Lab4/photos_jpeg/Image2.jpg
+Image 3 assigned points 28942: /Users/trevormm/Desktop/ENGO531/ENGO531_code/Lab4/photos_jpeg/Image3.jpg
+Image 4 assigned points 10725: /Users/trevormm/Desktop/ENGO531/ENGO531_code/Lab4/photos_jpeg/Image4.jpg
+Image 5 assigned points 4843: /Users/trevormm/Desktop/ENGO531/ENGO531_code/Lab4/photos_jpeg/Image5.jpg
+Image 6 assigned points 19710: /Users/trevormm/Desktop/ENGO531/ENGO531_code/Lab4/photos_jpeg/Image6.jpg
+Image 7 assigned points 12545: /Users/trevormm/Desktop/ENGO531/ENGO531_code/Lab4/photos_jpeg/Image7.jpg
+Image 8 assigned points 29904: /Users/trevormm/Desktop/ENGO531/ENGO531_code/Lab4/photos_jpeg/Image8.jpg
+Image 9 assigned points 104655: /Users/trevormm/Desktop/ENGO531/ENGO531_code/Lab4/photos_jpeg/Image9.jpg
